@@ -47,6 +47,40 @@ app.get("/api/trending", async (req, res) => {
   }
 });
 
+app.get("/api/recent-games", async (req, res) => {
+  try {
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+      return res.status(400).json({
+        error: "start and end dates are required",
+      });
+    }
+
+    const response = await fetch(
+      `${BASEURL}/games?dates=${start},${end}&ordering=-added&page_size=20&key=${RAWG_KEY}`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `RAWG API responded with status: ${response.status}`
+      );
+    }
+
+    const fullData = await response.json();
+
+    res.json({
+      data: fullData.results || [],
+    });
+  } catch (error) {
+    console.error("RAWG Server Error:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch recent games data",
+    });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
