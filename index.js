@@ -173,35 +173,28 @@ app.get("/api/release-calendar", async (req, res) => {
     // Fetch all three at the same time
     // -----------------------------------
 
-    const [
-      last60Response,
-      next60Response,
-      anticipatedResponse,
-    ] = await Promise.all([
-      fetch(last60Url),
-      fetch(next60Url),
-      fetch(anticipatedUrl),
-    ]);
+    const [last60Response, next60Response, anticipatedResponse] =
+      await Promise.all([
+        fetch(last60Url),
+        fetch(next60Url),
+        fetch(anticipatedUrl),
+      ]);
 
     // -----------------------------------
     // Check API responses
     // -----------------------------------
 
     if (!last60Response.ok) {
-      throw new Error(
-        `RAWG Last 60 Days error: ${last60Response.status}`
-      );
+      throw new Error(`RAWG Last 60 Days error: ${last60Response.status}`);
     }
 
     if (!next60Response.ok) {
-      throw new Error(
-        `RAWG Next 60 Days error: ${next60Response.status}`
-      );
+      throw new Error(`RAWG Next 60 Days error: ${next60Response.status}`);
     }
 
     if (!anticipatedResponse.ok) {
       throw new Error(
-        `RAWG Most Anticipated error: ${anticipatedResponse.status}`
+        `RAWG Most Anticipated error: ${anticipatedResponse.status}`,
       );
     }
 
@@ -242,6 +235,73 @@ app.get("/api/release-calendar", async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch release calendar",
     });
+  }
+});
+
+app.get("/api/search", async (req, res) => {
+  try {
+    const { name, platforms, genres, startYear, endYear, mode, sortBy, order } = req.query;
+
+    const queryParams = new URLSearchParams({
+      key: RAWG_KEY,
+      page_size: "40" // 💡 Increased to 40 items to capture a broader target pool before filtering titles
+    });
+
+    // Apply basic standard search (No exact/precise modifiers to prevent API conflicts)
+    if (name) {
+      queryParams.append("search", name.toString());
+    }
+
+    if (platforms) {
+      queryParams.append("platforms", platforms.toString()); // PC = 4
+    }
+
+    if (genres) {
+      queryParams.append("genres", genres.toString());
+    }
+
+    if (startYear && endYear) {
+      queryParams.append("dates", `${startYear}-01-01,${endYear}-12-31`);
+    }
+
+    if (mode && (mode.toLowerCase() === "singleplayer" || mode.toLowerCase() === "multiplayer")) {
+      queryParams.append("tags", mode.toLowerCase());
+    }
+
+    if (sortBy) {
+      const isDescending = order?.toString().toLowerCase() === "desc";
+      queryParams.append("ordering", isDescending ? `-${sortBy}` : sortBy);
+    }
+
+    const targetUrl = `${BASEURL}/games?${queryParams.toString()}`;
+    const response = await fetch(targetUrl);
+
+    if (!response.ok) {
+      throw new Error(`RAWG API responded with status: ${response.status}`);
+    }
+
+    const fullData = await response.json();
+    let gamesArray = fullData.results || [];
+
+    // ✅ THE TITLES SECURITY SAFEGUARD
+    // If a text search string exists, filter out unrelated description/tag match anomalies
+    if (name) {
+      const searchKeyword = name.toString().toLowerCase();
+      
+      gamesArray = gamesArray.filter((game) => {
+        // Keeps the item ONLY if the phrase "counter" is actually written inside the game title string
+        return game.name && game.name.toLowerCase().includes(searchKeyword);
+      });
+    }
+
+    // Slice back down to your standard layout threshold before sending
+    res.json({
+      data: gamesArray.slice(0, 20),
+    });
+
+  } catch (error) {
+    console.error("RAWG Search Error:", error);
+    res.status(500).json({ error: "Failed to extract search queries" });
   }
 });
 
