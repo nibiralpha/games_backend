@@ -486,19 +486,19 @@ app.get("/api/search", async (req, res) => {
     // -----------------------------
     // Additional name filtering
     // -----------------------------
-    if (name) {
-      const searchKeyword =
-        name.toString().toLowerCase();
+    // if (name) {
+    //   const searchKeyword =
+    //     name.toString().toLowerCase();
 
-      gamesArray = gamesArray.filter((game) => {
-        return (
-          game.name &&
-          game.name
-            .toLowerCase()
-            .includes(searchKeyword)
-        );
-      });
-    }
+    //   gamesArray = gamesArray.filter((game) => {
+    //     return (
+    //       game.name &&
+    //       game.name
+    //         .toLowerCase()
+    //         .includes(searchKeyword)
+    //     );
+    //   });
+    // }
 
     // -----------------------------
     // Response
