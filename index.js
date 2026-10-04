@@ -238,72 +238,297 @@ app.get("/api/release-calendar", async (req, res) => {
   }
 });
 
+// app.get("/api/search", async (req, res) => {
+//   try {
+//     const {
+//       name,
+//       platforms,
+//       genres,
+//       startYear,
+//       endYear,
+//       mode,
+//       sortBy,
+//       order,
+//       page = "1",
+//     } = req.query;
+
+//     const currentPage = Math.max(parseInt(page.toString(), 10) || 1, 1);
+//     const pageSize = 20;
+
+//     const queryParams = new URLSearchParams({
+//       key: RAWG_KEY,
+//       page: currentPage.toString(),
+//       page_size: pageSize.toString(),
+//     });
+
+//     if (name) {
+//       queryParams.append("search", name.toString());
+//     }
+
+//     if (platforms) {
+//       queryParams.append("platforms", platforms.toString());
+//     }
+
+//     if (genres) {
+//       queryParams.append("genres", genres.toString());
+//     }
+
+//     if (startYear && endYear) {
+//       queryParams.append(
+//         "dates",
+//         `${startYear}-01-01,${endYear}-12-31`
+//       );
+//     }
+
+//     if (
+//       mode &&
+//       (
+//         mode.toString().toLowerCase() === "singleplayer" ||
+//         mode.toString().toLowerCase() === "multiplayer"
+//       )
+//     ) {
+//       queryParams.append("tags", mode.toString().toLowerCase());
+//     }
+
+//     if (sortBy) {
+//       const isDescending =
+//         order?.toString().toLowerCase() === "desc";
+
+//       queryParams.append(
+//         "ordering",
+//         isDescending ? `-${sortBy}` : sortBy.toString()
+//       );
+//     }
+
+//     const targetUrl = `${BASEURL}/games?${queryParams.toString()}`;
+
+//     const response = await fetch(targetUrl);
+
+//     if (!response.ok) {
+//       throw new Error(
+//         `RAWG API responded with status: ${response.status}`
+//       );
+//     }
+
+//     const fullData = await response.json();
+
+//     let gamesArray = fullData.results || [];
+
+//     // Filter search results by title
+//     if (name) {
+//       const searchKeyword = name.toString().toLowerCase();
+
+//       gamesArray = gamesArray.filter((game) => {
+//         return (
+//           game.name &&
+//           game.name.toLowerCase().includes(searchKeyword)
+//         );
+//       });
+//     }
+
+//     res.json({
+//       data: gamesArray,
+//       count: fullData.count || 0,
+//       page: currentPage,
+//       pageSize,
+//       hasMore: currentPage * pageSize < (fullData.count || 0),
+//     });
+
+//   } catch (error) {
+//     console.error("RAWG Search Error:", error);
+
+//     res.status(500).json({
+//       error: "Failed to extract search queries",
+//     });
+//   }
+// });
+
 app.get("/api/search", async (req, res) => {
   try {
-    const { name, platforms, genres, startYear, endYear, mode, sortBy, order } = req.query;
+    const {
+      name,
+      platforms,
+      genres,
+      startYear,
+      endYear,
+      mode,
+      sortBy,
+      order,
+      page = "1",
+    } = req.query;
 
+    // -----------------------------
+    // Pagination
+    // -----------------------------
+    const currentPage = Math.max(
+      parseInt(page.toString(), 10) || 1,
+      1
+    );
+
+    const pageSize = 20;
+
+    // -----------------------------
+    // RAWG query parameters
+    // -----------------------------
     const queryParams = new URLSearchParams({
       key: RAWG_KEY,
-      page_size: "40" // 💡 Increased to 40 items to capture a broader target pool before filtering titles
+      page: currentPage.toString(),
+      page_size: pageSize.toString(),
     });
 
-    // Apply basic standard search (No exact/precise modifiers to prevent API conflicts)
+    // -----------------------------
+    // Search by game name
+    // -----------------------------
     if (name) {
-      queryParams.append("search", name.toString());
+      queryParams.append(
+        "search",
+        name.toString()
+      );
     }
 
+    // -----------------------------
+    // Platform
+    //
+    // Your frontend:
+    // platforms=2
+    //
+    // RAWG:
+    // parent_platforms=2
+    //
+    // This means PlayStation parent platform
+    // instead of one individual PlayStation
+    // console.
+    // -----------------------------
     if (platforms) {
-      queryParams.append("platforms", platforms.toString()); // PC = 4
+      queryParams.append(
+        "parent_platforms",
+        platforms.toString()
+      );
     }
 
+    // -----------------------------
+    // Genres
+    // -----------------------------
     if (genres) {
-      queryParams.append("genres", genres.toString());
+      queryParams.append(
+        "genres",
+        genres.toString()
+      );
     }
 
+    // -----------------------------
+    // Release year range
+    // -----------------------------
     if (startYear && endYear) {
-      queryParams.append("dates", `${startYear}-01-01,${endYear}-12-31`);
+      queryParams.append(
+        "dates",
+        `${startYear}-01-01,${endYear}-12-31`
+      );
     }
 
-    if (mode && (mode.toLowerCase() === "singleplayer" || mode.toLowerCase() === "multiplayer")) {
-      queryParams.append("tags", mode.toLowerCase());
+    // -----------------------------
+    // Game mode
+    // -----------------------------
+    if (
+      mode &&
+      (
+        mode.toString().toLowerCase() === "singleplayer" ||
+        mode.toString().toLowerCase() === "multiplayer"
+      )
+    ) {
+      queryParams.append(
+        "tags",
+        mode.toString().toLowerCase()
+      );
     }
 
+    // -----------------------------
+    // Sorting
+    // -----------------------------
     if (sortBy) {
-      const isDescending = order?.toString().toLowerCase() === "desc";
-      queryParams.append("ordering", isDescending ? `-${sortBy}` : sortBy);
+      const isDescending =
+        order?.toString().toLowerCase() === "desc";
+
+      queryParams.append(
+        "ordering",
+        isDescending
+          ? `-${sortBy}`
+          : sortBy.toString()
+      );
     }
 
-    const targetUrl = `${BASEURL}/games?${queryParams.toString()}`;
+    // -----------------------------
+    // RAWG API URL
+    // -----------------------------
+    const targetUrl =
+      `${BASEURL}/games?${queryParams.toString()}`;
+
+    console.log("RAWG URL:", targetUrl);
+
+    // -----------------------------
+    // Request RAWG
+    // -----------------------------
     const response = await fetch(targetUrl);
 
     if (!response.ok) {
-      throw new Error(`RAWG API responded with status: ${response.status}`);
+      throw new Error(
+        `RAWG API responded with status: ${response.status}`
+      );
     }
 
     const fullData = await response.json();
+
+    // -----------------------------
+    // Get games
+    // -----------------------------
     let gamesArray = fullData.results || [];
 
-    // ✅ THE TITLES SECURITY SAFEGUARD
-    // If a text search string exists, filter out unrelated description/tag match anomalies
+    // -----------------------------
+    // Additional name filtering
+    // -----------------------------
     if (name) {
-      const searchKeyword = name.toString().toLowerCase();
-      
+      const searchKeyword =
+        name.toString().toLowerCase();
+
       gamesArray = gamesArray.filter((game) => {
-        // Keeps the item ONLY if the phrase "counter" is actually written inside the game title string
-        return game.name && game.name.toLowerCase().includes(searchKeyword);
+        return (
+          game.name &&
+          game.name
+            .toLowerCase()
+            .includes(searchKeyword)
+        );
       });
     }
 
-    // Slice back down to your standard layout threshold before sending
+    // -----------------------------
+    // Response
+    // -----------------------------
     res.json({
-      data: gamesArray.slice(0, 20),
+      data: gamesArray,
+
+      count: fullData.count || 0,
+
+      page: currentPage,
+
+      pageSize,
+
+      hasMore:
+        currentPage * pageSize <
+        (fullData.count || 0),
     });
 
   } catch (error) {
-    console.error("RAWG Search Error:", error);
-    res.status(500).json({ error: "Failed to extract search queries" });
+    console.error(
+      "RAWG Search Error:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to extract search queries",
+    });
   }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
