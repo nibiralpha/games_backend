@@ -531,25 +531,28 @@ app.get("/api/search", async (req, res) => {
 
 app.get("/api/games/:id", async (req, res) => {
   try {
-    // 1. Extract the dynamic ID from the URL parameters
     const { id } = req.params;
 
-    // 2. Fetch the specific game from the RAWG API using the ID
-    const response = await fetch(`${BASEURL}/games/${id}?key=${RAWG_KEY}`);
-    
+    const response = await fetch(
+      `${BASEURL}/games/${id}?key=${RAWG_KEY}`
+    );
+
     if (!response.ok) {
-      throw new Error(`RAWG API responded with status: ${response.status}`);
+      throw new Error(
+        `RAWG API responded with status: ${response.status}`
+      );
     }
 
     const gameData = await response.json();
 
-    // 3. Return the game details payload object
-    res.json({
-      data: gameData,
-    });
+    // Return the game object directly
+    res.json(gameData);
   } catch (error) {
     console.error("Server Error fetching game details:", error);
-    res.status(500).json({ error: "Failed to extract game details" });
+
+    res.status(500).json({
+      error: "Failed to extract game details",
+    });
   }
 });
 
